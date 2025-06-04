@@ -14,11 +14,47 @@ import base64
 import streamlit.components.v1 as components
 import re
 import pyperclip
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 
-pypandoc.pandoc_path = r'C:\Users\Puture\AppData\Local\Pandoc\pandoc.exe'
+if "HTTP_PROXY" in os.environ and "HTTPS_PROXY" in os.environ:
+    # 两个都存在，执行设置代理
+    os.environ['http_proxy'] = os.getenv("HTTP_PROXY")
+    os.environ['https_proxy'] = os.getenv("HTTPS_PROXY")
+    print("代理设置完成")
+else:
+    print("HTTP_PROXY 或 HTTPS_PROXY 未配置，跳过代理设置")
+
+# pypandoc.pandoc_path = r'C:\Users\Puture\AppData\Local\Pandoc\pandoc.exe'
 
 st.set_page_config(page_title="Gemini Pro with Streamlit", page_icon="♊")
+
+st.markdown("""
+    <style>
+    /* 鼠标悬停时红色边框，不管是否focus */
+    button:hover {
+        color: red !important;
+        border-color: red !important;
+    }
+
+    /* 点击后（focus或active）默认灰色边框 */
+    button:focus, button:active {
+        outline: none !important;
+        box-shadow: none !important;
+        color: inherit !important;
+        border-color: #d3d3d3 !important;
+        background-color: initial !important;
+    }
+
+    /* 但是如果按钮focus且hover时，覆盖为红色边框 */
+    button:focus:hover {
+        color: red !important;
+        border-color: red !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 st.write("欢迎来到 Gemini Pro 聊天机器人。您可以通过提供您的 Google API 密钥来继续。")
 
@@ -29,9 +65,22 @@ st.write("欢迎来到 Gemini Pro 聊天机器人。您可以通过提供您的 
 #     st.info("请输入 Google API 密钥以继续")
 #     st.stop()
 
-genai.configure(api_key="")
+if "GEMINI_API_KEY" not in os.environ or not os.environ["GEMINI_API_KEY"]:
+    print("未配置环境变量 GEMINI_API_KEY，请先在.evn文件中配置！")
+else:
+    print("GEMINI_API_KEY 已配置。")
+
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 st.title("Gemini Pro 与 Streamlit 聊天机器人")
+
+
+def clearHistory():
+    st.session_state.messages.clear()
+    st.session_state["messages"] = [
+        {"role": "assistant", "content": "你好。我可以帮助你吗？"}]
+    print("聊天历史已清除")
+
 
 with st.sidebar:
     option = st.selectbox('选择您的模型', ('gemini-2.0-flash', 'gemini-1.5-flash'))
@@ -64,9 +113,7 @@ with st.sidebar:
     st.divider()
 
     if st.button("清除聊天历史"):
-        st.session_state.messages.clear()
-        st.session_state["messages"] = [
-            {"role": "assistant", "content": "你好。我可以帮助你吗？"}]
+        clearHistory()
 
 # 读取上传的文件内容
 file_text = ""
@@ -117,11 +164,50 @@ def summarize_for_filename(text: str, model_name="gemini-2.0-flash-lite") -> str
         return "document"
 
 
-def render_export_button(md_text: str, button_label="导出", file_name=None, key=None):
+def safe_filename(name: str, default="doc.docx") -> str:
+    # 只保留字母数字和下划线，防止文件名非法
+    safe_name = re.sub(r'[^\w\-_. ]', '', name)
+    safe_name = safe_name.strip()
+    if not safe_name:
+        return default
+    if not safe_name.lower().endswith(".docx"):
+        safe_name += ".docx"
+    return safe_name
+
+
+def render_export_button(role, md_text: str, button_label="导出", key=None):
+    file_name = "doc.docx"
+    if role == "assistant":
+        messages = st.session_state.get("messages", {})
+        # print(f"{key} message: {messages}")
+        print()
+        try:
+            match = re.search(r'\d+', key)  # 提取 key 中的数字部分
+            if match:
+                if role == "assistant":
+                    index = int(match.group()) - 1
+                else:
+                    index = int(match.group())
+                print(f"index: {index}")
+                if index >= 0 and index < len(messages):
+                    content = messages[index].get("content", "")
+                    print(f"content: {content}")
+                    file_name = safe_filename(
+                        content.split("\n", 1)[0])  # 取首行作为文件名
+                else:
+                    print("索引越界")
+            else:
+                print("key 中不包含数字")
+        except (ValueError, IndexError, KeyError) as e:
+            # 任何异常都用默认文件名
+            print(f"[导出异常] key={key}, 错误: {e}")
+            pass
+
+    print(f"file_name: {file_name}")
     if st.download_button(
         label=button_label,
         data=markdown_to_docx_bytes(md_text),
-        file_name="doc.docx",
+        file_name=file_name,
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         key=key
     ):
@@ -136,14 +222,16 @@ def retry(role, key, content):
     if role == "assistant":
         st.toast("仅用户消息可重试。")
         return
-    retry_prompt = st.session_state.messages[key]["content"] if key >= 0 else ""
-    print(f"重试按钮点击，retry_prompt: {retry_prompt}")
+    print(f"重试按钮点击，retry_prompt: {content}")
     response = st.session_state.chat.send_message(
-        retry_prompt, stream=True, generation_config=gen_config)
+        content, stream=True, generation_config=gen_config)
     response.resolve()
     retry_msg = response.text
-    st.session_state.messages[key + 1]["content"] = retry_msg
-    # st.rerun()
+    messages = st.session_state.messages
+    if key + 1 < len(messages):
+        messages[key + 1]["content"] = retry_msg
+    else:
+        print({"role": "assistant", "content": retry_msg})
 
 
 def render_btn(role, content: str, key: str):
@@ -152,7 +240,8 @@ def render_btn(role, content: str, key: str):
 
     # 导出按钮
     with col1:
-        render_export_button(content, button_label="📥 导出", key=f"export_{key}")
+        render_export_button(
+            role, content, button_label="📥 导出", key=f"export_{key}")
 
     # 复制按钮
     with col2:
@@ -160,25 +249,74 @@ def render_btn(role, content: str, key: str):
 
     # 重试按钮（仅限 assistant 消息）
     with col3:
+        # if role == "user":
         st.button("🔄 重试", key=f"retry_{key}",
                   on_click=lambda: retry(role, key, content))
 
     # 编辑按钮
     with col4:
-        if st.button("✏️ 编辑", key=f"edit_{key}"):
-            new_text = st.text_area(
-                "编辑内容", value=content, key=f"edit_input_{key}")
-            if st.button("✅ 保存修改", key=f"save_edit_{key}"):
-                print(f"保存修改按钮点击，new_text: {new_text}")
-                st.session_state.messages[key]["content"] = new_text
+        # 初始化编辑状态
+        if f"is_editing_{key}" not in st.session_state:
+            st.session_state[f"is_editing_{key}"] = False
+
+        if not st.session_state[f"is_editing_{key}"]:
+            if st.button("✏️ 编辑", key=f"edit_{key}"):
+                st.session_state[f"is_editing_{key}"] = True
+                st.session_state[f"edit_input_{key}"] = content
                 st.rerun()
 
     # 删除按钮
     with col5:
         if st.button("❌ 删除", key=f"delete_{key}"):
             print(f"删除按钮点击，key1: {key}")
-            st.session_state.messages.pop(key)
-            st.rerun()
+            if key == 0:
+                st.toast("提示对话，不可删除")
+                return
+            if "messages" in st.session_state:
+                messages = st.session_state.messages
+                if isinstance(messages, list) and 0 <= key < len(messages):
+                    messages.pop(key)
+                    st.rerun()
+                else:
+                    print(
+                        f"无效的 key: {key}, 当前 messages 长度: {len(messages)}")
+
+    with col6:
+        st.empty()
+
+    with col7:
+        st.empty()
+
+    # 把编辑框独立放在列外部，使其占整行宽度
+    if st.session_state.get(f"is_editing_{key}", False):
+        # 占整行的宽度
+        st.text_area(
+            "编辑内容",
+            key=f"edit_input_{key}",
+            height=200
+        )
+
+        col_save, col_cancel, col3, col4, col5 = st.columns([1]*5)
+        with col_save:
+            if st.button("✅ 保存修改", key=f"save_edit_{key}"):
+                st.session_state.messages[key][
+                    "content"] = st.session_state[f"edit_input_{key}"]
+                st.session_state[f"is_editing_{key}"] = False
+                st.rerun()
+
+        with col_cancel:
+            if st.button("❌ 取消", key=f"cancel_edit_{key}"):
+                st.session_state[f"is_editing_{key}"] = False
+                st.rerun()
+
+        with col3:
+            st.empty()
+
+        with col4:
+            st.empty()
+
+        with col5:
+            st.empty()
 
 
 # 展示聊天历史
@@ -224,6 +362,7 @@ elif uploaded_file and file_text:
         response = st.session_state.chat.send_message(
             combined_prompt, stream=True, generation_config=gen_config)
         response.resolve()
+
         msg = response.text
         st.session_state.messages.append({"role": "assistant", "content": msg})
         st.chat_message("assistant").write(msg)
@@ -239,6 +378,7 @@ else:
 
         response = st.session_state.chat.send_message(
             prompt, stream=True, generation_config=gen_config)
+        # print(f"结果: {response}")
         response.resolve()
         msg = response.text
         st.session_state.messages.append({"role": "assistant", "content": msg})

@@ -1,2 +1,10 @@
 streamlit
 google.generativeai
+Pillow
+python-docx
+PyPDF2
+markdown2
+beautifulsoup4
+pypandoc
+pyperclip
+python-dotenv
