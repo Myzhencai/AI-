@@ -185,28 +185,46 @@ def debug_logcat_file(input_text):
             use_time = int(match.group(1))
             use_time = 60 * use_time
         else:
-            use_time = 15
+            use_time = 0
 
     match = re.search(r'TAG=([a-zA-Z]+)', input_text)
     if match:
         tag = match.group(1)
     else:
-        tag = "Runtime"
+        tag = "null"
 
     with open('./temp/logcat.sh', 'r', encoding='utf-8') as f:
         content = f.read()
-        modified_content = re.sub(r'sleep \d+', "sleep " + str(use_time), content)
-        last_content = re.sub(r'LOG_TAG="([a-zA-Z]+)"', "LOG_TAG=" + '"' + tag + '"', modified_content)
+        if use_time != 0:
+            modified_content = re.sub(r'sleep \d+', "sleep " + str(use_time), content)
+        else:
+            use_time = 5
+            first_content = re.sub(r'logcat -c', "", content)
+            modified_content = re.sub(r'sleep \d+', "sleep " + str(use_time), first_content)
+
+        if tag != "null":
+            last_content = re.sub(r'LOG_TAG="([a-zA-Z]+)"', "LOG_TAG=" + '"' + tag + '"', modified_content)
 
     with open('./temp/logcat.sh', 'w', newline='\n', encoding='utf-8') as f:
-        f.write(last_content)
+        if tag != "null":
+            f.write(last_content)
+        else:
+            f.write(modified_content)
 
     result = subprocess.run(["adb", "push", r"E:\py_project\AI-gemini\temp\logcat.sh", "sdcard"], shell=True)
     if result.returncode == 0:
-        subprocess.run(["adb", "root"], shell=True)
-        subprocess.run("adb shell sh sdcard/logcat.sh", shell=True)
-        sleep_time(use_time)
-        subprocess.run(["adb", "pull", r"sdcard/system_log.txt", r"E:\py_project\AI-gemini\log"], shell=True)
+        result = subprocess.run('adb shell "nohup sh sdcard/logcat.sh > /dev/null 2>&1 &"', shell=True)
+        if result.returncode == 0:
+            print("logcat.sh 脚本执行中。。。")
+            sleep_time(use_time)
+            print("logcat.sh 脚本执行结束")
+            result = subprocess.run(["adb", "pull", r"sdcard/system_log.txt", r"E:\py_project\AI-gemini\log"], shell=True)
+            if result.returncode == 0:
+                print("system_log.txt pull success")
+            else:
+                print("system_log.txt pull failed")
+        else:
+            print("logcat.sh run failed")
     else:
         return "设备没有连接上ADB，请连接后重试"
 
@@ -227,8 +245,7 @@ def debug_logcat_file(input_text):
     需求描述：
     {logcat_content}这是抓取的系统log\n
     {input_text}
-
-    请给出详细分析，并做出合适的建议。
+    
     """
 
     response = st.session_state.chat.send_message(prompt, stream=True)

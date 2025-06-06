@@ -1,0 +1,47 @@
+--------- beginning of crash
+06-06 18:45:34.045 E/AndroidRuntime( 6787): FATAL EXCEPTION: main
+06-06 18:45:34.045 E/AndroidRuntime( 6787): Process: android.yaber.ckdemo, PID: 6787
+06-06 18:45:34.045 E/AndroidRuntime( 6787): java.lang.RuntimeException: Unable to start activity ComponentInfo{android.yaber.ckdemo/android.yaber.ckdemo.MainActivity}: java.lang.ArrayIndexOutOfBoundsException: length=3; index=3
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2954)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3089)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:78)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:108)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:68)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1849)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.os.Looper.loop(Looper.java:193)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.app.ActivityThread.main(ActivityThread.java:6722)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at java.lang.reflect.Method.invoke(Native Method)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:493)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:858)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): Caused by: java.lang.ArrayIndexOutOfBoundsException: length=3; index=3
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.yaber.ckdemo.MainActivity.onCreate(MainActivity.java:80)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.app.Activity.performCreate(Activity.java:7188)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.app.Activity.performCreate(Activity.java:7179)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1271)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2934)
+06-06 18:45:34.045 E/AndroidRuntime( 6787): 	... 11 more
+--------- beginning of system
+06-06 19:07:00.456 E/AndroidRuntime( 7024): FATAL EXCEPTION: main
+06-06 19:07:00.456 E/AndroidRuntime( 7024): Process: android.yaber.ckdemo, PID: 7024
+06-06 19:07:00.456 E/AndroidRuntime( 7024): java.lang.RuntimeException: Unable to start activity ComponentInfo{android.yaber.ckdemo/android.yaber.ckdemo.MainActivity}: java.lang.ArrayIndexOutOfBoundsException: length=3; index=3
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2954)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3089)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:78)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:108)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:68)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1849)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.os.Looper.loop(Looper.java:193)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.app.ActivityThread.main(ActivityThread.java:6722)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at java.lang.reflect.Method.invoke(Native Method)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:493)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:858)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): Caused by: java.lang.ArrayIndexOutOfBoundsException: length=3; index=3
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.yaber.ckdemo.MainActivity.onCreate(MainActivity.java:80)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.app.Activity.performCreate(Activity.java:7188)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.app.Activity.performCreate(Activity.java:7179)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1271)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2934)
+06-06 19:07:00.456 E/AndroidRuntime( 7024): 	... 11 more
+--------- beginning of main
