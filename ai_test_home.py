@@ -9,13 +9,65 @@ import docx
 import PyPDF2
 import pandas as pd
 import os
+import pypandoc
+import tempfile
 
 
 count_script = 0
 
+def markdown_to_docx_bytes(md_text):
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmpfile:
+        tmp_path = tmpfile.name
+    pypandoc.convert_text(md_text, 'docx', format='md', outputfile=tmp_path)
+    with open(tmp_path, 'rb') as f:
+        return f.read()
+
+def safe_filename(name: str, default="doc.docx") -> str:
+    # 只保留字母数字和下划线，防止文件名非法
+    safe_name = re.sub(r'[^\w\-_. ]', '', name)
+    safe_name = safe_name.strip()
+    if not safe_name:
+        return default
+    if not safe_name.lower().endswith(".docx"):
+        safe_name += ".docx"
+    return safe_name
+
+def render_export_button(md_text: str, key=None):
+    file_name = "PRD.docx"
+    if st.download_button(
+        label="导出",
+        data=markdown_to_docx_bytes(md_text),
+        file_name=file_name,
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        key=key
+    ):
+        st.toast("导出成功！")
+
 # 示例函数（请根据实际实现替换）
-def generateprd(input_text):
-    return f"（PRD分析结果）\n{input_text}"
+def generateprd(prompt, file_text):
+    if file_text:
+        if not st.session_state.get("file_processed", False):
+            agent = "{\"PRD规范制定\":{\"前置条件\":{\"产品目标\":\"\"},\"功能需求\":{\"功能清单\":\"\",\"数据指标\":\"\",\"应用场景\":{\"使用场景\":\"场景规则\",\"边界判断\":\"\",\"功能\":\"\",\"UI交互\":\"\"},\"结构图\":\"\"},\"非功能说明\":{\"性能指标\":{\"速度\":\"\",\"可靠性\":\"\"},\"兼容性\":\"\"},\"验收标准\":\"\"}}"
+            full_prompt = f"{agent}这个是一个prd规范模版，必须严格根据这个模版规范，逐小项检测用户上传的prd文档是否按规范模版完善，有内容的选项忽略，没有选项或选项为空逐项提问，然后根据用户输入去扩写完善这一项，然后显示完善后的完整文档，问用户是否满意，用户不满意，则根据用户输入重新AI生成这一项内容，用户满意，则再检查下一项，依次类推，直到全部完善以下是用户上传的 PRD 文档内容，最后然后输出一个完善后完整的PRD文档：\n{file_text}"
+            response = st.session_state.chat.send_message(
+            full_prompt, stream=True, generation_config=gen_config)
+            st.session_state["file_processed"] = True
+        else:
+            response = st.session_state.chat.send_message(
+            prompt, stream=True, generation_config=gen_config)
+    else:
+        if not st.session_state.get("text_processed", False):
+            full_prompt = f"{roleprompt}\n\n根据这个模版规范，逐项完善用户的prd文档，如果有缺失内容的选项且不是标记为非必要信息的选项逐项提示用户输入，要逐项引导用户输入，然后根据用户输入去扩写完善这一项，然后显示完善后的完整文档，问用户是否满意，用户不满意，则根据用户输入重新AI生成这一项内容，用户满意，则再检查下一项，依次类推，直到全部完善以下是用户上传的 PRD 文档内容，这个是产品名称：{prompt}"
+            response = st.session_state.chat.send_message(
+            full_prompt, stream=True, generation_config=gen_config)
+            st.session_state["text_processed"] = True
+        else:
+            response = st.session_state.chat.send_message(
+            prompt, stream=True, generation_config=gen_config)
+
+    response.resolve()
+    msg = response.text
+    return msg
 
 
 def generatetestscripts(input_text):
@@ -187,29 +239,40 @@ def debug_logcat_file(input_text):
 
 # PRD 模式系统提示
 roleprompt = """
-我是一个产品需求文档分析专家，请提供一个PRD文档草稿给我，我会按照下面的 PRD 规范对内容进行结构化填充。
+我是一个投影仪产品需求文档分析专家，请提供一个PRD文档草稿给我，我会按照下面的 PRD 规范对内容进行结构化填充。
 规范包括：
 
 1. 前置条件
-   - 背景介绍
-   - 产品类目
-   - 名词解释
+   - 背景介绍（非必要信息）
+   - 产品目标
+   - 名词解释（非必要信息）
 
 2. 功能需求
    - 功能清单
    - 数据指标
-   - 流程图（如 UI 框图）
-   - 应用场景（使用场景、场景规则、边界判断、中断处理、功能与 UI 交互）
+   - 流程图（如 UI 框图）（非必要信息）
+   - 应用场景
+     - 使用场景
+     - 场景规则
+     - 边界判断
+     - 中断处理（非必要信息）
+     - 功能与 UI 交互
    - 结构图
 
 3. 非功能说明
-   - 性能指标（速度、可靠性、CPU/内存占用等）
+   - 性能指标
+     - 速度
+     - 可靠性
+     - CPU/内存占用（非必要信息）
    - 兼容性
-   - 安全和保密
+   - 安全和保密（非必要信息）
 
-4. 验收标准
+4. 测试方法
+   - 测试描述
 
-请提供给我一个PRD文档吧
+5. 验收标准
+
+请上传 PRD 文档或给我一个产品名称，我根据以上 PRD 规范个你逐步完善 PRD 文档。
 """
 
 st.set_page_config(page_title="Gemini Pro with Streamlit", page_icon="♊")
@@ -306,14 +369,7 @@ if prompt := st.chat_input():
 
     # 根据模式处理输入
     if st.session_state["chat_mode"] == "Prd":
-        if file_text and not st.session_state.get("file_processed", False):
-            full_prompt = f"{roleprompt}\n\n以下是用户上传的 PRD 文档内容：\n{file_text}"
-            response = st.session_state.chat.send_message(full_prompt, stream=True, generation_config=gen_config)
-            st.session_state["file_processed"] = True
-            response.resolve()
-            msg = response.text
-        else:
-            msg = generateprd(user_input)
+        msg = generateprd(user_input, file_text)
 
     elif st.session_state["chat_mode"] == "Test":
         msg = generatetestscripts(user_input)
@@ -325,26 +381,30 @@ if prompt := st.chat_input():
     st.chat_message("assistant").write(msg)
 
 # 保存 PRD 按钮
-if st.session_state["chat_mode"] == "Prd":
-    if st.button("保存修改的PRD到本地文件"):
-        last_assistant_msg = None
-        for message in reversed(st.session_state.messages):
-            if message["role"] == "assistant":
-                last_assistant_msg = message["content"]
-                break
+# if st.session_state["chat_mode"] == "Prd":
+#     if st.button("保存修改的PRD到本地文件"):
+#         last_assistant_msg = None
+#         for message in reversed(st.session_state.messages):
+#             if message["role"] == "assistant":
+#                 last_assistant_msg = message["content"]
+#                 break
 
-        if last_assistant_msg:
-            save_dir = "D:/LLM_Gemini_Pro_Streamlit/"
-            os.makedirs(save_dir, exist_ok=True)
-            save_path = os.path.join(save_dir, "修改后的PRD.txt")
+#         if last_assistant_msg:
+#             save_dir = "D:/LLM_Gemini_Pro_Streamlit/"
+#             os.makedirs(save_dir, exist_ok=True)
+#             save_path = os.path.join(save_dir, "修改后的PRD.txt")
 
-            with open(save_path, "w", encoding="utf-8") as f:
-                f.write(last_assistant_msg)
+#             with open(save_path, "w", encoding="utf-8") as f:
+#                 f.write(last_assistant_msg)
 
-            st.success(f"PRD 已保存到本地文件: {save_path}")
-        else:
-            st.warning("没有找到可以保存的回复内容。")
+#             st.success(f"PRD 已保存到本地文件: {save_path}")
+#         else:
+#             st.warning("没有找到可以保存的回复内容。")
 
 if st.session_state["chat_mode"] == "Test":
     if st.button("执行脚本"):
         run_scripts()
+elif st.session_state["chat_mode"] == "Prd":
+    messages = st.session_state.messages
+    if len(messages) > 0 and messages[len(messages) - 1]["role"] == "assistant":
+        render_export_button(messages[len(messages) - 1]["content"], "export_doc")
