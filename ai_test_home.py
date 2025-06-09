@@ -299,6 +299,15 @@ PRD规范制定
     msg = response.text
     return msg
 
+def generate_test_case_json():
+    test_case_model = [{"moduleKey":"systemControl","moduleName":"系统控制","features":[{"featureKey":"homeDongleSwitch","featureName":"主页和dongle切换"},{"featureKey":"settingsKey","featureName":"设置键"},{"featureKey":"powerOff","featureName":"关机"},{"featureKey":"volumeUp","featureName":"音量+"},{"featureKey":"volumeDown","featureName":"音量-"},{"featureKey":"keyUp","featureName":"上键"},{"featureKey":"keyDown","featureName":"下键"},{"featureKey":"keyLeft","featureName":"左键"},{"featureKey":"keyRight","featureName":"右键"},{"featureKey":"okKey","featureName":"OK键"},{"featureKey":"autoFocusKey","featureName":"自动对焦键"},{"featureKey":"focusPlus","featureName":"FOCUS+"},{"featureKey":"focusMinus","featureName":"FOCUS-"},{"featureKey":"muteKey","featureName":"mute键"},{"featureKey":"backKey","featureName":"返回键"},{"featureKey":"homeKey","featureName":"主页键"}]},{"moduleKey":"audioBluetooth","moduleName":"音频与蓝牙","features":[{"featureKey":"enterBluetoothSpeaker","featureName":"进入蓝牙音响"},{"featureKey":"bluetoothOpen","featureName":"打开BT"},{"featureKey":"bluetoothClose","featureName":"关闭BT"}]},{"moduleKey":"powerScreen","moduleName":"电源与屏幕","features":[{"featureKey":"screenOff","featureName":"息屏"},{"featureKey":"enterAging","featureName":"进入老化"},{"featureKey":"exitAging","featureName":"退出老化"}]},{"moduleKey":"wifiTest","moduleName":"WiFi测试","features":[{"featureKey":"openWifi","featureName":"打开WiFi","cases":[{"caseKey":"openFromSettings","caseName":"从设置中打开WiFi","steps":["1、打开设置","2、选择WiFi选项","3、关闭WiFi开关按钮","4、等待5秒，测试网络是否可用","5、重新打开WiFi开关按钮","6、测试网络是否可用"],"expected":"WiFi关闭后网络不可用，开启后恢复连接"},{"caseKey":"openFromDropdown","caseName":"从下拉状态栏中打开"}]},{"featureKey":"closeWifi","featureName":"关闭WiFi","cases":[{"caseKey":"closeFromSettings","caseName":"从设置中关闭WiFi"},{"caseKey":"closeFromDropdown","caseName":"从下拉状态栏中关闭WiFi"}]},{"featureKey":"wifiStability","featureName":"WiFi稳定性测试","cases":[{"caseKey":"reconnectAfterDisconnection","caseName":"断网后自动重连测试","steps":["1、打开设置","2、选择 WiFi 选项","3、关闭 WiFi 开关按钮","4、等待 10 秒","5、打开 WiFi 开关按钮","6、等待 10 秒","7、重复步骤 3、4、5 共执行 10 次","8、最后确认网络是否可用"]}]}]},{"moduleKey":"bluetoothTest","moduleName":"蓝牙测试","features":[{"featureKey":"","featureName":"","cases":[{"caseKey":"","caseName":"","steps":["1、","2、"],"expected":""},{"caseKey":"","caseName":""}]},{"featureKey":"","featureName":"","cases":[{"caseKey":"","caseName":""},{"caseKey":"","caseName":""}]},{"featureKey":"","featureName":"","cases":[{"caseKey":"","caseName":"","steps":["1、","2、"]}]}]},{"moduleKey":"systemAccess","moduleName":"系统权限与恢复","features":[{"featureKey":"rootPermission","featureName":"root权限"},{"featureKey":"factoryReset","featureName":"恢复出厂"}]},{"moduleKey":"deviceInfo","moduleName":"设备信息获取","features":[{"featureKey":"getVersion","featureName":"获取版本号"},{"featureKey":"getDeviceModel","featureName":"获取机器设备型号"},{"featureKey":"getWiredMac","featureName":"获取有线mac"},{"featureKey":"getAutoFocusStatus","featureName":"获取当前自动对焦状态"},{"featureKey":"getTrapezoidStatus","featureName":"获取当前自动梯形状态"},{"featureKey":"getProjectionZoom","featureName":"获取当前投影缩放比例"},{"featureKey":"getTrapezoidCoordinates","featureName":"获取当前四点梯形坐标"},{"featureKey":"getWifiDriverStatus","featureName":"获取wifi驱动加载状态"},{"featureKey":"getWiredPlugStatus","featureName":"获取有线插入状态"}]}]
+    prompt = f"""按照下面的模版生成上面测试方法对应的JSON测试代码：{test_case_model}"""
+    response = st.session_state.chat.send_message(
+            prompt, stream=True, generation_config=gen_config)
+    response.resolve()
+    msg = response.text
+    return msg
+
 
 def generatetestscripts(input_text):
     """
@@ -486,39 +495,6 @@ def debug_logcat_file(input_text):
 
 # PRD 模式系统提示
 roleprompt = """
-我是一个投影仪产品需求文档分析专家，请提供一个PRD文档草稿给我，我会按照下面的 PRD 规范对内容进行结构化填充。
-规范包括：
-
-1. 前置条件
-   - 背景介绍（非必要信息）
-   - 产品目标
-   - 名词解释（非必要信息）
-
-2. 功能需求
-   - 功能清单
-   - 数据指标
-   - 流程图（如 UI 框图）（非必要信息）
-   - 应用场景
-     - 使用场景
-     - 场景规则
-     - 边界判断
-     - 中断处理（非必要信息）
-     - 功能与 UI 交互
-   - 结构图
-
-3. 非功能说明
-   - 性能指标
-     - 速度
-     - 可靠性
-     - CPU/内存占用（非必要信息）
-   - 兼容性
-   - 安全和保密（非必要信息）
-
-4. 测试方法
-   - 测试描述
-
-5. 验收标准
-
 请上传 PRD 文档或给我一个产品名称，我根据以上 PRD 规范个你逐步完善 PRD 文档。
 """
 
@@ -605,6 +581,9 @@ if prompt := st.chat_input():
         st.session_state["file_processed"] = False
         st.session_state["text_processed"] = False
         user_input = prompt.removeprefix("Prd@").strip()
+    elif prompt.startswith("TestCase@"):
+        st.session_state["chat_mode"] = "TestCase"
+        user_input = prompt.removeprefix("TestCase@").strip()
     elif prompt.startswith("Test@"):
         st.session_state["chat_mode"] = "Test"
         count_script = 0
@@ -619,6 +598,9 @@ if prompt := st.chat_input():
     # 根据模式处理输入
     if st.session_state["chat_mode"] == "Prd":
         msg = generateprd(user_input, file_text)
+
+    elif st.session_state["chat_mode"] == "TestCase":
+        msg = generate_test_case_json()
 
     elif st.session_state["chat_mode"] == "Test":
         msg = generatetestscripts(user_input)
