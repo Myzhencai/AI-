@@ -396,10 +396,10 @@ def generatetestscripts(input_text):
 你是一个熟练的 Linux Shell 脚本工程师，请根据以下自然语言描述生成一个完整的 Bash 脚本：
 
 需求描述：
-{content}这是一个函数调用库，请优先从函数库中选择测试方法，其中没用的到的方法不用写出来。如果没有就自动生成，但是不要使用“adb shell”关键字\n
+{content}这是一个函数调用库，请优先从函数库中选择测试使用的函数，如果没有就自动生成，但是不要使用“adb shell”关键字\n
 {input_text}
 
-请输出完整的脚本内容，要求包含解释性注释，脚本以 #!/bin/sh 开头。
+请输出正确调用函数的脚本内容，当前测试中没有用到的函数不用显示出来，简洁易懂，脚本以 #!/bin/sh 开头。
 """
     prompt2 = f"""
 你是一个熟练的 Linux Shell 脚本工程师，请根据以下自然语言描述生成一个完整的 Bash 脚本：
@@ -419,10 +419,11 @@ def generatetestscripts(input_text):
     os.makedirs(shell_save_dir, exist_ok=True)
     shell_save_path = os.path.join(shell_save_dir, "ai_tmp.sh")
     shell_file_content = response.text.removeprefix("```bash").strip()
-    shell_file_content = shell_file_content.removesuffix("```").strip()
-
-    with open(shell_save_path, "w", newline='\n', encoding="utf-8") as f:
-        f.write(shell_file_content)
+    backtick_pos = shell_file_content.find('```')
+    if backtick_pos != -1:
+        last_file_content = shell_file_content[:backtick_pos]
+        with open(shell_save_path, "w", newline='\n', encoding="utf-8") as f:
+            f.write(last_file_content)
 
     return response.text
 
@@ -562,7 +563,15 @@ def debug_logcat_file(input_text):
 
 # PRD 模式系统提示
 roleprompt = """
-请上传 PRD 文档或给我一个产品名称，我会帮你逐步完善 PRD 文档。
+你好，我可以帮你，生成PRD测试文档，生成测试用例，写测试shell脚本，Debug日志分析:\n
+请在输入任务前加以下前缀来开启任务：\n
+PRD@：生成PRD测试文档 \n
+TestCase@：生成测试用例 \n
+Test@：写测试shell脚本 \n
+Debug@：日志分析 \n
+
+例如：Test@请写一个测试按音量加键5次的shell脚本 \n
+PRD@请生成一个测试按音量加键5次的测试文档 \n
 """
 
 st.set_page_config(page_title="Gemini Pro with Streamlit", page_icon="♊")
