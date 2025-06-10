@@ -307,22 +307,20 @@ def generate_test_case_json(user_input):
         prompt = f"""按照下面的模版生成上面测试方法对应的JSON测试代码：{test_case_model}"""
         response = st.session_state.chat.send_message(
                 prompt, stream=True, generation_config=gen_config)
-        response.resolve()
-        msg = response.text
-        match = re.search(r'\[\s*{.*}\s*\]', msg, re.DOTALL)
-        if match:
-            json_str = match.group(0)  # 提取匹配到的 JSON 字符串
-            try:
-                data = json.loads(json_str)
-                st.session_state["test_case_processed"] = True
-                return data
-            except json.JSONDecodeError as e:
-                print(f"解析 JSON 失败: {e}")
     else:
         response = st.session_state.chat.send_message(
             user_input, stream=True, generation_config=gen_config)
-        response.resolve()
-        msg = response.text
+    response.resolve()
+    msg = response.text
+    match = re.search(r'\[\s*{.*}\s*\]', msg, re.DOTALL)
+    if match:
+        json_str = match.group(0)  # 提取匹配到的 JSON 字符串
+        try:
+            data = json.loads(json_str)
+            st.session_state["test_case_processed"] = True
+            return data
+        except json.JSONDecodeError as e:
+            print(f"解析 JSON 失败: {e}")
     return msg
 
 
