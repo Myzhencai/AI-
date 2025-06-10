@@ -383,6 +383,7 @@ def generatetestscripts(input_text):
 
     file_path = './test_function.sh'
     shell_save_dir = './temp'
+    test_case_str = ""
 
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -392,11 +393,24 @@ def generatetestscripts(input_text):
     except Exception as e:
         print(f"An error occurred: {e}")
 
+    if st.session_state.get("test_case_processed"):
+        data = st.session_state["test_case_json"]
+        for item in data:
+            features = item.get("features", [])
+            for feature in features:
+                cases = feature.get("cases", [])
+                for case in cases:
+                    steps = case.get("steps", [])
+                    test_case_str = ';'.join(map(str, steps))
+                    print(test_case_str)
+
+
     prompt = f"""
 你是一个熟练的 Linux Shell 脚本工程师，请根据以下自然语言描述生成一个完整的 Bash 脚本：
 
 需求描述：
 {content}这是一个函数调用库，请优先从函数库中选择测试使用的函数，如果没有就自动生成，但是不要使用“adb shell”关键字\n
+{test_case_str}
 {input_text}
 
 请输出正确调用函数的脚本内容，当前测试中没有用到的函数不用显示出来，简洁易懂，脚本以 #!/bin/sh 开头。
