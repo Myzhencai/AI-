@@ -169,11 +169,11 @@ PRD规范制定
 
 用户上传的 PRD 文本如下：{file_text}"""
             response = st.session_state.chat.send_message(
-            full_prompt, stream=True, generation_config=gen_config)
+            full_prompt, stream=False, generation_config=gen_config)
             st.session_state["file_processed"] = True
         else:
             response = st.session_state.chat.send_message(
-            prompt, stream=True, generation_config=gen_config)
+            prompt, stream=False, generation_config=gen_config)
     else:
         if not st.session_state.get("text_processed", False):
             full_prompt = f"""你是一个专业的**投影仪产品需求文档（PRD）助手**，请根据用户提供的【产品名称】，逐项引导用户填写 PRD 内容，具体要求如下：
@@ -290,11 +290,11 @@ PRD规范制定
 
 请根据上方逻辑，与用户开始交互，这个是产品名称：{prompt}"""
             response = st.session_state.chat.send_message(
-            full_prompt, stream=True, generation_config=gen_config)
+            full_prompt, stream=False, generation_config=gen_config)
             st.session_state["text_processed"] = True
         else:
             response = st.session_state.chat.send_message(
-            prompt, stream=True, generation_config=gen_config)
+            prompt, stream=False, generation_config=gen_config)
 
     response.resolve()
     msg = response.text
@@ -356,11 +356,11 @@ def generate_test_case_json(user_input):
 
 """
         response = st.session_state.chat.send_message(
-                prompt, stream=True, generation_config=gen_config)
+                prompt, stream=False, generation_config=gen_config)
     else:
         # prompt = f"根据{user_input}，安照这个模版{test_case_model}选出对应的JSON测试代码"
         response = st.session_state.chat.send_message(
-            user_input, stream=True, generation_config=gen_config)
+            user_input, stream=False, generation_config=gen_config)
     response.resolve()
     msg = response.text
     match = re.search(r'\[\s*{.*}\s*\]', msg, re.DOTALL)
