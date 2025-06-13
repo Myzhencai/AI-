@@ -12,9 +12,9 @@ import os
 import pypandoc
 import tempfile
 import json
+import jsonpath
 
 
-count_script = 0
 
 def markdown_to_docx_bytes(md_text):
     with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmpfile:
@@ -22,6 +22,7 @@ def markdown_to_docx_bytes(md_text):
     pypandoc.convert_text(md_text, 'docx', format='md', outputfile=tmp_path)
     with open(tmp_path, 'rb') as f:
         return f.read()
+
 
 def safe_filename(name: str, default="doc.docx") -> str:
     # 只保留字母数字和下划线，防止文件名非法
@@ -33,6 +34,7 @@ def safe_filename(name: str, default="doc.docx") -> str:
         safe_name += ".docx"
     return safe_name
 
+
 def render_export_button(md_text: str, key=None):
     file_name = "PRD.docx"
     if st.download_button(
@@ -43,6 +45,7 @@ def render_export_button(md_text: str, key=None):
         key=key
     ):
         st.toast("导出成功！")
+
 
 # 示例函数（请根据实际实现替换）
 def generateprd(prompt, file_text):
@@ -297,8 +300,8 @@ PRD规范制定
             prompt, stream=False, generation_config=gen_config)
 
     response.resolve()
-    msg = response.text
-    return msg
+    return response.text
+
 
 def generate_test_case_json(user_input):
     test_case_model = [{"moduleKey":"systemControl","moduleName":"系统控制","features":[{"featureKey":"homeDongleSwitch","featureName":"主页和dongle切换"},{"featureKey":"settingsKey","featureName":"设置键"},{"featureKey":"powerOff","featureName":"关机"},{"featureKey":"volumeUp","featureName":"音量+"},{"featureKey":"volumeDown","featureName":"音量-"},{"featureKey":"keyUp","featureName":"上键"},{"featureKey":"keyDown","featureName":"下键"},{"featureKey":"keyLeft","featureName":"左键"},{"featureKey":"keyRight","featureName":"右键"},{"featureKey":"okKey","featureName":"OK键"},{"featureKey":"autoFocusKey","featureName":"自动对焦键"},{"featureKey":"focusPlus","featureName":"FOCUS+"},{"featureKey":"focusMinus","featureName":"FOCUS-"},{"featureKey":"muteKey","featureName":"mute键"},{"featureKey":"backKey","featureName":"返回键"},{"featureKey":"homeKey","featureName":"主页键"}]},{"moduleKey":"audioBluetooth","moduleName":"音频与蓝牙","features":[{"featureKey":"enterBluetoothSpeaker","featureName":"进入蓝牙音响"},{"featureKey":"bluetoothOpen","featureName":"打开BT"},{"featureKey":"bluetoothClose","featureName":"关闭BT"}]},{"moduleKey":"powerScreen","moduleName":"电源与屏幕","features":[{"featureKey":"screenOff","featureName":"息屏"},{"featureKey":"enterAging","featureName":"进入老化"},{"featureKey":"exitAging","featureName":"退出老化"}]},{"moduleKey":"wifiTest","moduleName":"WiFi测试","features":[{"featureKey":"openWifi","featureName":"打开WiFi","cases":[{"caseKey":"openFromSettings","caseName":"从设置中打开WiFi","steps":["1、打开设置","2、选择WiFi选项","3、关闭WiFi开关按钮","4、等待5秒，测试网络是否可用","5、重新打开WiFi开关按钮","6、测试网络是否可用"],"expected":"WiFi关闭后网络不可用，开启后恢复连接"},{"caseKey":"openFromDropdown","caseName":"从下拉状态栏中打开"}]},{"featureKey":"closeWifi","featureName":"关闭WiFi","cases":[{"caseKey":"closeFromSettings","caseName":"从设置中关闭WiFi"},{"caseKey":"closeFromDropdown","caseName":"从下拉状态栏中关闭WiFi"}]},{"featureKey":"wifiStability","featureName":"WiFi稳定性测试","cases":[{"caseKey":"reconnectAfterDisconnection","caseName":"断网后自动重连测试","steps":["1、打开设置","2、选择 WiFi 选项","3、关闭 WiFi 开关按钮","4、等待 10 秒","5、打开 WiFi 开关按钮","6、等待 10 秒","7、重复步骤 3、4、5 共执行 10 次","8、最后确认网络是否可用"]}]}]},{"moduleKey":"bluetoothTest","moduleName":"蓝牙测试","features":[{"featureKey":"","featureName":"","cases":[{"caseKey":"","caseName":"","steps":["1、","2、"],"expected":""},{"caseKey":"","caseName":""}]},{"featureKey":"","featureName":"","cases":[{"caseKey":"","caseName":""},{"caseKey":"","caseName":""}]},{"featureKey":"","featureName":"","cases":[{"caseKey":"","caseName":"","steps":["1、","2、"]}]}]},{"moduleKey":"systemAccess","moduleName":"系统权限与恢复","features":[{"featureKey":"rootPermission","featureName":"root权限"},{"featureKey":"factoryReset","featureName":"恢复出厂"}]},{"moduleKey":"deviceInfo","moduleName":"设备信息获取","features":[{"featureKey":"getVersion","featureName":"获取版本号"},{"featureKey":"getDeviceModel","featureName":"获取机器设备型号"},{"featureKey":"getWiredMac","featureName":"获取有线mac"},{"featureKey":"getAutoFocusStatus","featureName":"获取当前自动对焦状态"},{"featureKey":"getTrapezoidStatus","featureName":"获取当前自动梯形状态"},{"featureKey":"getProjectionZoom","featureName":"获取当前投影缩放比例"},{"featureKey":"getTrapezoidCoordinates","featureName":"获取当前四点梯形坐标"},{"featureKey":"getWifiDriverStatus","featureName":"获取wifi驱动加载状态"},{"featureKey":"getWiredPlugStatus","featureName":"获取有线插入状态"}]}]
@@ -395,15 +398,11 @@ def generatetestscripts(input_text):
 
     if st.session_state.get("test_case_processed"):
         data = st.session_state["test_case_json"]
-        for item in data:
-            features = item.get("features", [])
-            for feature in features:
-                cases = feature.get("cases", [])
-                for case in cases:
-                    steps = case.get("steps", [])
-                    test_case_str = ';'.join(map(str, steps))
-                    print(test_case_str)
+        step_list = jsonpath.jsonpath(data, '$..steps')
+        for step in step_list:
+            test_case_str = ';'.join(map(str, step))
 
+    print(test_case_str)
 
     prompt = f"""
 你是一个熟练的 Linux Shell 脚本工程师，请根据以下自然语言描述生成一个完整的 Bash 脚本：
@@ -424,8 +423,9 @@ def generatetestscripts(input_text):
 请输出修改后的脚本内容，仅提供代码就可以了。
 """
 
-    if count_script == 0:
+    if not st.session_state.get("shell_processed", False):
         response = st.session_state.chat.send_message(prompt, stream=True)
+        st.session_state["shell_processed"] = True
     else:
         response = st.session_state.chat.send_message(prompt2, stream=True)
 
@@ -613,6 +613,12 @@ with st.sidebar:
     temperature = st.number_input("温度", min_value=0.0, max_value=1.0, value=0.5, step=0.01)
     max_token = st.number_input("最大输出令牌数", min_value=0, value=10000)
     gen_config = genai.types.GenerationConfig(max_output_tokens=max_token, temperature=temperature)
+    input_mode = st.selectbox(
+        label='请选择输入模式：',
+        options=('Prd', 'TestCase', 'Shell', 'Debug'),
+        index=0,
+        format_func=str
+    )
     st.divider()
 
     upload_file = st.file_uploader(
@@ -655,12 +661,17 @@ with st.sidebar:
     if st.button("清除聊天历史"):
         st.session_state.messages = [{"role": "system", "content": roleprompt}]
         st.session_state.chat_mode = "Prd"
+        st.session_state["uploaded_filename"] = ""
+        st.session_state["file_processed"] = False
+        st.session_state["text_processed"] = False
 
 # 初始化聊天状态
 if "messages" not in st.session_state:
     st.session_state["messages"] = [{"role": "system", "content": roleprompt}]
 if "chat_mode" not in st.session_state:
     st.session_state["chat_mode"] = "Prd"
+    st.session_state["file_processed"] = False
+    st.session_state["text_processed"] = False
 
 # 显示历史记录
 for msg in st.session_state.messages:
@@ -672,39 +683,51 @@ if prompt := st.chat_input():
     st.chat_message("user").write(prompt)
 
     # 切换模式
-    prompt_lower = prompt.lower()
-    if prompt_lower.startswith("prd@"):
-        st.session_state["chat_mode"] = "Prd"
-        st.session_state["file_processed"] = False
-        st.session_state["text_processed"] = False
-        user_input = prompt.removeprefix("Prd@").strip()
-    elif prompt_lower.startswith("testcase@"):
-        st.session_state["chat_mode"] = "TestCase"
-        st.session_state["test_case_processed"] = False
-        user_input = prompt.removeprefix("TestCase@").strip()
-    elif prompt_lower.startswith("test@"):
-        st.session_state["chat_mode"] = "Test"
-        count_script = 0
-        user_input = prompt.removeprefix("Test@").strip()
-    elif prompt_lower.startswith("debug@"):
-        st.session_state["chat_mode"] = "Debug"
-        user_input = prompt.removeprefix("Debug@").strip()
-    else:
-        user_input = prompt
-        count_script = 1
+    # prompt_lower = prompt.lower()
+    # if prompt_lower.startswith("prd@"):
+    #     st.session_state["chat_mode"] = "Prd"
+    #     st.session_state["file_processed"] = False
+    #     st.session_state["text_processed"] = False
+    #     user_input = prompt.removeprefix("Prd@").strip()
+    # elif prompt_lower.startswith("testcase@"):
+    #     st.session_state["chat_mode"] = "TestCase"
+    #     st.session_state["test_case_processed"] = False
+    #     user_input = prompt.removeprefix("TestCase@").strip()
+    # elif prompt_lower.startswith("test@"):
+    #     st.session_state["chat_mode"] = "Test"
+    #     count_script = 0
+    #     user_input = prompt.removeprefix("Test@").strip()
+    # elif prompt_lower.startswith("debug@"):
+    #     st.session_state["chat_mode"] = "Debug"
+    #     user_input = prompt.removeprefix("Debug@").strip()
+    # else:
+    #     user_input = prompt
+    #     count_script = 1
+
+    if input_mode != st.session_state.chat_mode:
+        st.session_state.chat_mode = input_mode
+        if input_mode == "Prd":
+            st.session_state["file_processed"] = False
+            st.session_state["text_processed"] = False
+        elif input_mode == "TestCase":
+            st.session_state["test_case_processed"] = False
+        elif input_mode == "Shell":
+            st.session_state["shell_processed"] = False
+        elif input_mode == "Debug":
+            st.session_state["debug_processed"] = False
 
     # 根据模式处理输入
     if st.session_state["chat_mode"] == "Prd":
-        msg = generateprd(user_input, file_text)
+        msg = generateprd(prompt, file_text)
 
     elif st.session_state["chat_mode"] == "TestCase":
-        msg = generate_test_case_json(user_input)
+        msg = generate_test_case_json(prompt)
 
-    elif st.session_state["chat_mode"] == "Test":
-        msg = generatetestscripts(user_input)
+    elif st.session_state["chat_mode"] == "Shell":
+        msg = generatetestscripts(prompt)
 
     elif st.session_state["chat_mode"] == "Debug":
-        msg = debug_logcat_file(user_input)
+        msg = debug_logcat_file(prompt)
 
     st.session_state.messages.append({"role": "assistant", "content": msg})
     st.chat_message("assistant").write(msg)
@@ -730,7 +753,7 @@ if prompt := st.chat_input():
 #         else:
 #             st.warning("没有找到可以保存的回复内容。")
 
-if st.session_state["chat_mode"] == "Test":
+if st.session_state["chat_mode"] == "Shell":
     if st.button("执行脚本"):
         run_scripts()
 elif st.session_state["chat_mode"] == "Prd":

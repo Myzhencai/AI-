@@ -1,9 +1,9 @@
 #!/bin/sh
 
 # --- 配置参数 ---
-PING_TARGET="8.8.8.8" # 用于验证网络连接的IP地址
+PING_TARGET="183.2.172.177" # 用于验证网络连接的IP地址
 LOG_FILE="/sdcard/wifi_stability_test.log"
-TEST_COUNTS=50
+TEST_COUNTS=10
 
 # --- 函数定义 ---
 
@@ -91,7 +91,7 @@ settings_open_and_close_wifi_test() {
     enter_keypad_ok
     sleep 10
     ret=check_network_connection
-    if [ $ret -eq 1 ]; then
+    if [ $ret -eq 0 ]; then
         echo "第 $i 次，wifi已打开，网络正常"
     else
         echo "第 $i 次，wifi已关闭，网络异常"
