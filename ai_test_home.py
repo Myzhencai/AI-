@@ -397,6 +397,7 @@ def generatetestscripts(input_text):
         print(f"An error occurred: {e}")
 
     if st.session_state.get("test_case_processed"):
+        st.session_state["test_case_processed"] = False
         data = st.session_state["test_case_json"]
         step_list = jsonpath.jsonpath(data, '$..steps')
         for step in step_list:
@@ -578,14 +579,12 @@ def debug_logcat_file(input_text):
 # PRD 模式系统提示
 roleprompt = """
 你好，我可以帮你，生成PRD测试文档，生成测试用例，写测试shell脚本，Debug日志分析:\n
-请在输入任务前加以下前缀来开启任务：\n
-PRD@：生成PRD测试文档 \n
-TestCase@：生成测试用例 \n
-Test@：写测试shell脚本 \n
-Debug@：日志分析 \n
+请在左侧栏中选择对应的输入模式：\n
+PRD模式：生成PRD测试文档 \n
+TestCase模式：生成测试用例 \n
+Shell模式：写测试shell脚本 \n
+Debug：日志分析 \n
 
-例如：Test@请写一个测试按音量加键5次的shell脚本 \n
-PRD@请生成一个测试按音量加键5次的测试文档 \n
 """
 
 st.set_page_config(page_title="Gemini Pro with Streamlit", page_icon="♊")
@@ -602,6 +601,11 @@ if not google_api_key:
 
 genai.configure(api_key=google_api_key)
 
+
+def reset_select_options():
+    st.session_state.select_option = "Auto"
+
+
 with st.sidebar:
     option = st.selectbox('选择您的模型', ('gemini-2.0-flash-lite',))
 
@@ -613,11 +617,14 @@ with st.sidebar:
     temperature = st.number_input("温度", min_value=0.0, max_value=1.0, value=0.5, step=0.01)
     max_token = st.number_input("最大输出令牌数", min_value=0, value=10000)
     gen_config = genai.types.GenerationConfig(max_output_tokens=max_token, temperature=temperature)
+    if 'select_option' not in st.session_state:
+        st.session_state.select_option = "Auto"
     input_mode = st.selectbox(
         label='请选择输入模式：',
-        options=('Prd', 'TestCase', 'Shell', 'Debug'),
+        options=('Auto', 'Prd', 'TestCase', 'Shell', 'Debug'),
         index=0,
-        format_func=str
+        format_func=str,
+        key='select_option'
     )
     st.divider()
 
@@ -647,6 +654,8 @@ with st.sidebar:
             df = pd.read_excel(upload_file)
             file_text = df.to_csv(index=False)
 
+        print(st.session_state.get("uploaded_filename"))
+        print(st.session_state["chat_mode"])
         if st.session_state.get("uploaded_filename") != upload_file.name:
             st.session_state["file_processed"] = False
             st.session_state["uploaded_filename"] = upload_file.name
@@ -658,20 +667,16 @@ with st.sidebar:
 
     st.divider()
 
-    if st.button("清除聊天历史"):
+    if st.button("清除聊天历史", on_click=reset_select_options):
         st.session_state.messages = [{"role": "system", "content": roleprompt}]
         st.session_state.chat_mode = "Prd"
         st.session_state["uploaded_filename"] = ""
-        st.session_state["file_processed"] = False
-        st.session_state["text_processed"] = False
 
 # 初始化聊天状态
 if "messages" not in st.session_state:
     st.session_state["messages"] = [{"role": "system", "content": roleprompt}]
 if "chat_mode" not in st.session_state:
-    st.session_state["chat_mode"] = "Prd"
-    st.session_state["file_processed"] = False
-    st.session_state["text_processed"] = False
+    st.session_state["chat_mode"] = "Auto"
 
 # 显示历史记录
 for msg in st.session_state.messages:
@@ -728,6 +733,10 @@ if prompt := st.chat_input():
 
     elif st.session_state["chat_mode"] == "Debug":
         msg = debug_logcat_file(prompt)
+    else:
+        response = st.session_state.chat.send_message(prompt, stream=True)
+        response.resolve()
+        msg = response.text
 
     st.session_state.messages.append({"role": "assistant", "content": msg})
     st.chat_message("assistant").write(msg)
