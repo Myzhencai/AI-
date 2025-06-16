@@ -1,6 +1,7 @@
 import re
 import subprocess
 import time
+from pathlib import Path
 
 import streamlit as st
 from PIL import Image
@@ -399,9 +400,10 @@ def generatetestscripts(input_text):
     if st.session_state.get("test_case_processed"):
         st.session_state["test_case_processed"] = False
         data = st.session_state["test_case_json"]
-        step_list = jsonpath.jsonpath(data, '$..steps')
-        for step in step_list:
-            test_case_str = ';'.join(map(str, step))
+        step_list = jsonpath.jsonpath(data, '$..steps') or []
+        if step_list:
+            for step in step_list:
+                test_case_str = ';'.join(map(str, step))
 
     print(test_case_str)
 
@@ -458,7 +460,8 @@ def sleep_time(user_time):
 
 
 def run_scripts():
-    result = subprocess.run(["adb", "push", r"E:\py_project\AI-gemini\temp\ai_tmp.sh", "sdcard"], shell=True)
+    tmp_shell_path = Path('./temp/ai_tmp.sh').resolve()
+    result = subprocess.run(["adb", "push", tmp_shell_path, "sdcard"], shell=True)
     print("push ai_tmp.sh success:", result.returncode)  # 0 表示成功
     if result.returncode == 0:
         subprocess.run(["adb", "root"], shell=True)
@@ -483,7 +486,10 @@ def run_scripts():
 
         result = subprocess.run("adb shell screencap -p sdcard/cap.png", shell=True)
         print("get screen cap success:", result.returncode)
-        result = subprocess.run(["adb", "pull", "sdcard/cap.png", r"E:\py_project\AI-gemini\screen"], shell=True)
+        save_dir = "screen"
+        os.makedirs(save_dir, exist_ok=True)
+        tmp_cap_path = Path('./screen/').resolve()
+        result = subprocess.run(["adb", "pull", "sdcard/cap.png", tmp_cap_path], shell=True)
         if result.returncode == 0:
             image = Image.open("./screen/cap.png")
             st.image(image, caption='设备当前显示内容', use_container_width=True)
@@ -494,6 +500,7 @@ def run_scripts():
 
 def debug_logcat_file(input_text):
     log_path = './log/system_log.txt'
+    logcat_sh_path = os.path.join(os.path.dirname(__file__), "logcat.sh")
 
     if os.path.exists(log_path):
         os.remove(log_path)
@@ -515,7 +522,7 @@ def debug_logcat_file(input_text):
     else:
         tag = "null"
 
-    with open('./temp/logcat.sh', 'r', encoding='utf-8') as f:
+    with open(logcat_sh_path, 'r', encoding='utf-8') as f:
         content = f.read()
         if use_time != 0:
             modified_content = re.sub(r'sleep \d+', "sleep " + str(use_time), content)
@@ -527,20 +534,21 @@ def debug_logcat_file(input_text):
         if tag != "null":
             last_content = re.sub(r'LOG_TAG="([a-zA-Z]+)"', "LOG_TAG=" + '"' + tag + '"', modified_content)
 
-    with open('./temp/logcat.sh', 'w', newline='\n', encoding='utf-8') as f:
+    with open(logcat_sh_path, 'w', newline='\n', encoding='utf-8') as f:
         if tag != "null":
             f.write(last_content)
         else:
             f.write(modified_content)
 
-    result = subprocess.run(["adb", "push", r"E:\py_project\AI-gemini\temp\logcat.sh", "sdcard"], shell=True)
+    result = subprocess.run(["adb", "push", logcat_sh_path, "sdcard"], shell=True)
     if result.returncode == 0:
         result = subprocess.run('adb shell "nohup sh sdcard/logcat.sh > /dev/null 2>&1 &"', shell=True)
         if result.returncode == 0:
-            print("logcat.sh 脚本执行中。。。")
             sleep_time(use_time)
-            print("logcat.sh 脚本执行结束")
-            result = subprocess.run(["adb", "pull", r"sdcard/system_log.txt", r"E:\py_project\AI-gemini\log"], shell=True)
+            save_dir = "log"
+            os.makedirs(save_dir, exist_ok=True)
+            tmp_log_path = Path('./log/').resolve()
+            result = subprocess.run(["adb", "pull", r"sdcard/system_log.txt", tmp_log_path], shell=True)
             if result.returncode == 0:
                 print("system_log.txt pull success")
             else:
@@ -654,8 +662,6 @@ with st.sidebar:
             df = pd.read_excel(upload_file)
             file_text = df.to_csv(index=False)
 
-        print(st.session_state.get("uploaded_filename"))
-        print(st.session_state["chat_mode"])
         if st.session_state.get("uploaded_filename") != upload_file.name:
             st.session_state["file_processed"] = False
             st.session_state["uploaded_filename"] = upload_file.name
@@ -669,7 +675,7 @@ with st.sidebar:
 
     if st.button("清除聊天历史", on_click=reset_select_options):
         st.session_state.messages = [{"role": "system", "content": roleprompt}]
-        st.session_state.chat_mode = "Prd"
+        st.session_state.chat_mode = "Auto"
         st.session_state["uploaded_filename"] = ""
 
 # 初始化聊天状态
