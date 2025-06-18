@@ -13,6 +13,7 @@ import pypandoc
 import tempfile
 import json
 import jsonpath
+import ast
 
 
 
@@ -37,6 +38,8 @@ def safe_filename(name: str, default="doc.docx") -> str:
 
 def render_export_button(md_text: str, key=None):
     file_name = "PRD.docx"
+    if "uploaded_filename" in st.session_state and st.session_state["uploaded_filename"]:
+        file_name = st.session_state["uploaded_filename"]
     if st.download_button(
         label="导出",
         data=markdown_to_docx_bytes(md_text),
@@ -300,82 +303,106 @@ PRD规范制定
             prompt, stream=False, generation_config=gen_config)
 
     response.resolve()
-    return response.text
+    return response.text 
 
 
 def generate_test_case_json(user_input):
-    test_case_model = [{"moduleKey":"systemControl","moduleName":"系统控制","features":[{"featureKey":"homeDongleSwitch","featureName":"主页和dongle切换"},{"featureKey":"settingsKey","featureName":"设置键"},{"featureKey":"powerOff","featureName":"关机"},{"featureKey":"volumeUp","featureName":"音量+"},{"featureKey":"volumeDown","featureName":"音量-"},{"featureKey":"keyUp","featureName":"上键"},{"featureKey":"keyDown","featureName":"下键"},{"featureKey":"keyLeft","featureName":"左键"},{"featureKey":"keyRight","featureName":"右键"},{"featureKey":"okKey","featureName":"OK键"},{"featureKey":"autoFocusKey","featureName":"自动对焦键"},{"featureKey":"focusPlus","featureName":"FOCUS+"},{"featureKey":"focusMinus","featureName":"FOCUS-"},{"featureKey":"muteKey","featureName":"mute键"},{"featureKey":"backKey","featureName":"返回键"},{"featureKey":"homeKey","featureName":"主页键"}]},{"moduleKey":"audioBluetooth","moduleName":"音频与蓝牙","features":[{"featureKey":"enterBluetoothSpeaker","featureName":"进入蓝牙音响"},{"featureKey":"bluetoothOpen","featureName":"打开BT"},{"featureKey":"bluetoothClose","featureName":"关闭BT"}]},{"moduleKey":"powerScreen","moduleName":"电源与屏幕","features":[{"featureKey":"screenOff","featureName":"息屏"},{"featureKey":"enterAging","featureName":"进入老化"},{"featureKey":"exitAging","featureName":"退出老化"}]},{"moduleKey":"wifiTest","moduleName":"WiFi测试","features":[{"featureKey":"openWifi","featureName":"打开WiFi","cases":[{"caseKey":"openFromSettings","caseName":"从设置中打开WiFi","steps":["1、打开设置","2、选择WiFi选项","3、关闭WiFi开关按钮","4、等待5秒，测试网络是否可用","5、重新打开WiFi开关按钮","6、测试网络是否可用"],"expected":"WiFi关闭后网络不可用，开启后恢复连接"},{"caseKey":"openFromDropdown","caseName":"从下拉状态栏中打开"}]},{"featureKey":"closeWifi","featureName":"关闭WiFi","cases":[{"caseKey":"closeFromSettings","caseName":"从设置中关闭WiFi"},{"caseKey":"closeFromDropdown","caseName":"从下拉状态栏中关闭WiFi"}]},{"featureKey":"wifiStability","featureName":"WiFi稳定性测试","cases":[{"caseKey":"reconnectAfterDisconnection","caseName":"断网后自动重连测试","steps":["1、打开设置","2、选择 WiFi 选项","3、关闭 WiFi 开关按钮","4、等待 10 秒","5、打开 WiFi 开关按钮","6、等待 10 秒","7、重复步骤 3、4、5 共执行 10 次","8、最后确认网络是否可用"]}]}]},{"moduleKey":"bluetoothTest","moduleName":"蓝牙测试","features":[{"featureKey":"","featureName":"","cases":[{"caseKey":"","caseName":"","steps":["1、","2、"],"expected":""},{"caseKey":"","caseName":""}]},{"featureKey":"","featureName":"","cases":[{"caseKey":"","caseName":""},{"caseKey":"","caseName":""}]},{"featureKey":"","featureName":"","cases":[{"caseKey":"","caseName":"","steps":["1、","2、"]}]}]},{"moduleKey":"systemAccess","moduleName":"系统权限与恢复","features":[{"featureKey":"rootPermission","featureName":"root权限"},{"featureKey":"factoryReset","featureName":"恢复出厂"}]},{"moduleKey":"deviceInfo","moduleName":"设备信息获取","features":[{"featureKey":"getVersion","featureName":"获取版本号"},{"featureKey":"getDeviceModel","featureName":"获取机器设备型号"},{"featureKey":"getWiredMac","featureName":"获取有线mac"},{"featureKey":"getAutoFocusStatus","featureName":"获取当前自动对焦状态"},{"featureKey":"getTrapezoidStatus","featureName":"获取当前自动梯形状态"},{"featureKey":"getProjectionZoom","featureName":"获取当前投影缩放比例"},{"featureKey":"getTrapezoidCoordinates","featureName":"获取当前四点梯形坐标"},{"featureKey":"getWifiDriverStatus","featureName":"获取wifi驱动加载状态"},{"featureKey":"getWiredPlugStatus","featureName":"获取有线插入状态"}]}]
-    if not st.session_state.get("test_case_processed", False):
-        prompt = f"""请严格按照以下要求执行任务：
+    test_case_model_path = './test_case_model.json'
+    test_case_model = ""
 
----
+    try:
+        with open(test_case_model_path, 'r', encoding='utf-8') as file:
+            test_case_model = file.read()
+    except FileNotFoundError:
+        print(f"Error: The file '{test_case_model_path}' was not found.")
+        st.toast(f"Error: The file '{test_case_model_path}' was not found.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        st.toast(f"An error occurred: {e}")
 
-### 🎯 任务目标：
+    if test_case_model:
+        if not st.session_state.get("test_case_processed", False):
+            prompt = f"""请严格按照以下要求执行任务：
 
-你需要**仅从下面我提供的完整 JSON 模板中**，选取与上方 PRD 测试方法相关的模块（通过 `moduleKey` 匹配），**原样输出所选模块的 JSON 内容**，用于后续测试代码生成。
+    ---
 
----
+    ### 🎯 任务目标：
 
-### ⚠️ 严格限制：
+    你需要**仅从下面我提供的完整 JSON 模板中**，选取与上方 PRD 测试方法相关的模块（通过 `moduleKey` 匹配），如果上面没有PRD测试方法，则按下面JSON模版完整输出，**原样输出所选模块的 JSON 内容**，用于后续测试代码生成。
 
-* **不能修改** JSON 模板中的字段名、字段值、字段顺序、嵌套结构；
-* **不能新增、删除或补全**模块、字段或案例；
-* **只能从模板中选取模块，并输出原始 JSON 内容，其他全部忽略**；
-* **输出的JSON必须为双引号的JSON；
-* **输出结果只能为 JSON 内容本身，禁止输出任何解释说明、额外文字、标点、前后缀、注释等**。
+    ---
 
----
+    ### ⚠️ 严格限制：
 
-### ✅ 输出示例：
+    * **不能修改** JSON 模板中的字段名、字段值、字段顺序、嵌套结构；
+    * **不能新增、删除或补全**模块、字段或案例；
+    * **只能从模板中选取模块，并输出原始 JSON 内容，其他全部忽略**；
+    * **输出的JSON必须为双引号的JSON；
+    * **输出结果只能为 JSON 内容本身，禁止输出任何解释说明、额外文字、标点、前后缀、注释等**。
 
-仅当选中模块为 `systemControl` 与 `wifiTest` 时，应输出如下内容：
+    ---
 
-```json
-{[
-  {
-    "moduleKey": "systemControl",
-    "moduleName": "系统控制",
-    "features": [
-      ...
-    ]
-  },
-  {
-    "moduleKey": "wifiTest",
-    "moduleName": "WiFi测试",
-    "features": [
-      ...
-    ]
-  }
-]}
-```
+    ### ✅ 输出示例：
 
----
+    仅当选中模块为 `systemControl` 与 `wifiTest` 时，应输出如下内容：
 
-### 📌 模板如下（只允许从此模板中选取模块，无任何改动）：
+    ```json
+    {[
+    {
+        "moduleKey": "systemControl",
+        "moduleName": "系统控制",
+        "features": [
+        ...
+        ]
+    },
+    {
+        "moduleKey": "wifiTest",
+        "moduleName": "WiFi测试",
+        "features": [
+        ...
+        ]
+    }
+    ]}
+    ```
 
-{test_case_model}
+    ---
 
----
+    ### 📌 模板如下（只允许从此模板中选取模块，无任何改动）：
 
-"""
-        response = st.session_state.chat.send_message(
-                prompt, stream=False, generation_config=gen_config)
-    else:
-        # prompt = f"根据{user_input}，安照这个模版{test_case_model}选出对应的JSON测试代码"
-        response = st.session_state.chat.send_message(
-            user_input, stream=False, generation_config=gen_config)
-    response.resolve()
-    msg = response.text
-    match = re.search(r'\[\s*{.*}\s*\]', msg, re.DOTALL)
-    if match:
-        json_str = match.group(0)  # 提取匹配到的 JSON 字符串
-        try:
-            data = json.loads(json_str)
+    {test_case_model}
+
+    ---
+
+    {user_input}
+
+    """
+            response = st.session_state.chat.send_message(
+                    prompt, stream=False, generation_config=gen_config)
+        else:
+            # prompt = f"根据{user_input}，安照这个模版{test_case_model}选出对应的JSON测试代码"
+            response = st.session_state.chat.send_message(
+                user_input, stream=False, generation_config=gen_config)
+        response.resolve()
+        msg = response.text
+        match = re.search(r'\[\s*{.*}\s*\]', msg, re.DOTALL)
+        if match:
+            json_str = match.group(0)  # 提取匹配到的 JSON 字符串
+            try:
+                # 优先尝试标准 JSON
+                data = json.loads(json_str)
+            except json.JSONDecodeError as e:
+                print(f"解析 JSON 失败: {e}")
+                try:
+                    # 回退使用 ast.literal_eval 处理类 Python 格式（单引号）
+                    data = ast.literal_eval(json_str)
+                except Exception as e:
+                    print(f"解析失败: {e}")
+                    return msg
             st.session_state["test_case_processed"] = True
             st.session_state["test_case_json"] = data
             return data
-        except json.JSONDecodeError as e:
-            print(f"解析 JSON 失败: {e}")
+    else:
+        msg = "请将测试用例模版文件：test_case_model.json放到当前目录"
     return msg
 
 
@@ -655,12 +682,13 @@ with st.sidebar:
             file_text = df.to_csv(index=False)
 
         print(st.session_state.get("uploaded_filename"))
-        print(st.session_state["chat_mode"])
+        print(input_mode)
         if st.session_state.get("uploaded_filename") != upload_file.name:
             st.session_state["file_processed"] = False
             st.session_state["uploaded_filename"] = upload_file.name
 
-            if st.session_state["chat_mode"] == "Prd":
+            if input_mode == "Prd":
+                st.session_state.chat_mode = input_mode
                 msg = generateprd("", file_text)
                 st.session_state.messages.append({"role": "assistant", "content": msg})
                 st.chat_message("assistant").write(msg)
