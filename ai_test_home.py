@@ -560,6 +560,8 @@ def debug_logcat_file(input_text):
 
         if tag != "null":
             last_content = re.sub(r'LOG_TAG="([a-zA-Z]+)"', "LOG_TAG=" + '"' + tag + '"', modified_content)
+        else:
+            last_content = re.sub(r'LOG_TAG="([a-zA-Z]+)"', 'LOG_TAG="AndroidRuntime | DEBUG"', modified_content)
 
     with open(logcat_sh_path, 'w', newline='\n', encoding='utf-8') as f:
         if tag != "null":

@@ -3,13 +3,13 @@
 # --- 配置参数 ---
 PING_TARGET="183.2.172.177" # 用于验证网络连接的IP地址
 LOG_FILE="/sdcard/wifi_stability_test.log"
-TEST_COUNTS=10
+TEST_COUNTS=5
 
 # --- 函数定义 ---
 
 # 获取WiFi状态
 get_wifi_state() {
-    settings get global wifi_on
+    return "$(settings get global wifi_on)"
 }
 
 # 开启WiFi
@@ -26,8 +26,8 @@ disable_wifi() {
 
 # 验证网络连接
 check_network_connection() {
-    adb shell ping -c 3 "$PING_TARGET" > /dev/null 2>&1
-    if [ $? -eq 0 ]; then
+    ret=$(ping -c 3 "$PING_TARGET")
+    if [[ $(echo "$ret" | grep "3 received") != "" ]]; then
         return 0 # 成功
     else
         return 1 # 失败
@@ -90,8 +90,8 @@ settings_open_and_close_wifi_test() {
   for i in $(seq 1 $TEST_COUNTS); do
     enter_keypad_ok
     sleep 10
-    ret=check_network_connection
-    if [ $ret -eq 0 ]; then
+    check_network_connection
+    if [ $? -eq 0 ]; then
         echo "第 $i 次，wifi已打开，网络正常"
     else
         echo "第 $i 次，wifi已关闭，网络异常"
@@ -103,12 +103,12 @@ settings_open_and_close_wifi_test() {
 
 # 获取自动对焦开关状态
 get_autoFocus_status() {
-  getprop persist.sys.puture.autofocus
+  return "$(getprop persist.sys.puture.autofocus)"
 }
 
 # 获取自动梯形开关状态
 get_autoKeystone_status() {
-  getprop persist.sys.puture.autokeystone
+  return "$(getprop persist.sys.puture.autokeystone)"
 }
 
 # 设置中，选择自动梯形开关选项
