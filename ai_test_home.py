@@ -260,14 +260,14 @@ def generateprd(prompt, file_text):
 ```
 
 用户上传的 PRD 文本如下：{file_text}"""
-            msg = send_prompt_with_timeout(full_prompt)
-            # response = st.session_state.chat.send_message(
-            # full_prompt, stream=False, generation_config=gen_config)
+            # msg = send_prompt_with_timeout(full_prompt)
+            response = st.session_state.chat.send_message(
+            full_prompt, stream=False, generation_config=gen_config)
             st.session_state["file_processed"] = True
         else:
-            msg = send_prompt_with_timeout(prompt)
-            # response = st.session_state.chat.send_message(
-            # prompt, stream=False, generation_config=gen_config)
+            # msg = send_prompt_with_timeout(prompt)
+            response = st.session_state.chat.send_message(
+            prompt, stream=False, generation_config=gen_config)
     else:
         if not st.session_state.get("text_processed", False):
             full_prompt = f"""你是一个专业的**投影仪产品需求文档（PRD）助手**，请根据用户提供的【产品名称】，逐项引导用户填写 PRD 内容，具体要求如下：
@@ -382,15 +382,16 @@ def generateprd(prompt, file_text):
 ---
 
 请根据上方逻辑，与用户开始交互，这个是产品名称：{prompt}"""
-            msg = send_prompt_with_timeout(full_prompt)
-            # response = st.session_state.chat.send_message(
-            # full_prompt, stream=False, generation_config=gen_config)
+            # msg = send_prompt_with_timeout(full_prompt)
+            response = st.session_state.chat.send_message(
+            full_prompt, stream=False, generation_config=gen_config)
             st.session_state["text_processed"] = True
         else:
-            msg = send_prompt_with_timeout(prompt)
-            # response = st.session_state.chat.send_message(
-            # prompt, stream=False, generation_config=gen_config)
+            # msg = send_prompt_with_timeout(prompt)
+            response = st.session_state.chat.send_message(
+            prompt, stream=False, generation_config=gen_config)
 
+    msg = response.text
     return msg
 
 
