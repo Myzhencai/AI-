@@ -734,7 +734,7 @@ def reset_select_options():
 
 
 with st.sidebar:
-    option = st.selectbox('选择您的模型', ('gemini-2.0-flash-lite','gemini-2.0-flash'))
+    option = st.selectbox('选择您的模型', ('gemini-2.0-flash', 'gemini-2.0-flash-lite'))
 
     if 'model' not in st.session_state or st.session_state.model != option:
         st.session_state.chat = genai.GenerativeModel(option).start_chat(history=[])
